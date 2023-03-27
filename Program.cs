@@ -107,6 +107,18 @@ app.MapPut("/games/{id:int}", async (int id, AppDbContext dbContext, Game game) 
     return Results.Ok(gamesDb);
 });
 
+app.MapDelete("/games/{id:int}", async (int id, AppDbContext dbContext) =>
+{
+    var gamesDb =  await dbContext.Games.FindAsync(id);
+    if(gamesDb is null)
+    {
+        return Results.NotFound();
+    }
 
+    dbContext.Games.Remove(gamesDb);
+    await dbContext.SaveChangesAsync();
+
+    return Results.NoContent();
+});
 
 app.Run();
