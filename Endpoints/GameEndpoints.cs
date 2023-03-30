@@ -30,7 +30,6 @@ public static class GameEndpoints
             if (id != game.GameId)
             {
                 return Results.BadRequest();
-
             } 
 
             var gamesDb = await dbContext.Games.FindAsync(id);

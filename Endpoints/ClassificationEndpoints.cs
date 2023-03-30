@@ -9,7 +9,7 @@ public static class ClassificationEndpoints
     {
         app.MapGet("/classifications", async (AppDbContext contextDb) =>
         {
-        return await contextDb.Classifications.ToListAsync();
+            return await contextDb.Classifications.ToListAsync();
         }).RequireAuthorization();
 
         app.MapGet("/classifications/{id:int}", async (int id, AppDbContext dbContext) =>
@@ -30,7 +30,6 @@ public static class ClassificationEndpoints
             if (id != classification.ClassificationId)
             {
                 return Results.BadRequest();
-
             }
 
             var classificationsDb = await dbContext.Classifications.FindAsync(id);
