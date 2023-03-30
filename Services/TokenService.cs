@@ -1,6 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using ApiWeb.Models;
 using System.Text;
+using ApiWeb.Models;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ApiWeb.Services;
 
@@ -15,5 +17,17 @@ public class TokenService : ITokenService
        };
 
        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+
+       var crendentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+       var token = new JwtSecurityToken(issuer: issuer,
+        audience: audience,
+        claims: claims,
+        expires: DateTime.Now.AddMinutes(10),
+        signingCredentials: crendentials);
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var stringToken = tokenHandler.WriteToken(token);
+        return stringToken;
     }
 }

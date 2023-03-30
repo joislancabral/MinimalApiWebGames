@@ -1,6 +1,11 @@
+using System.Text;
 using ApiWeb.Context;
 using ApiWeb.Models;
+using ApiWeb.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,13 +13,60 @@ string? MySqlConnection = builder.Configuration.GetConnectionString("DefaultConn
 builder.Services.AddDbContext<AppDbContext>(options => options
 .UseMySql(MySqlConnection, ServerVersion.AutoDetect(MySqlConnection)));
 
+//Service Authentication Token
+builder.Services.AddSingleton<ITokenService>(new TokenService());
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+.AddJwtBearer(options => 
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey
+        (Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+    };
+});
+
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
+
+//Endpoint login
+app.MapPost("/login",[AllowAnonymous] (UserModel userModel, ITokenService tokenService) =>
+{
+    if (userModel == null)
+    {
+        return Results.BadRequest("Login invalided");
+    }
+    if(userModel.UserName == "fariasgames" && userModel.Password == "better123")
+    {
+        var tokenString = tokenService.GenerateToken(app.Configuration["Jwt:Key"],
+            app.Configuration["Jwt:Issuer"],
+            app.Configuration["Jwt:Audience"],
+            userModel);
+            return Results.Ok(new {token = tokenString});
+    }
+    else
+    {
+        return Results.BadRequest("Login invalided");
+    }
+
+}).Produces(StatusCodes.Status400BadRequest)
+    .Produces(StatusCodes.Status200OK)
+    .WithName("Login")
+    .WithTags("Authentication");
 
 //Classification
 app.MapGet("/classifications",  async (AppDbContext contextDb) =>
 {
     return await contextDb.Classifications.ToListAsync();
-});
+}).RequireAuthorization();
 
 app.MapGet("/classifications/{id:int}", async (int id, AppDbContext dbContext) => 
 {
@@ -120,5 +172,8 @@ app.MapDelete("/games/{id:int}", async (int id, AppDbContext dbContext) =>
 
     return Results.NoContent();
 });
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.Run();
